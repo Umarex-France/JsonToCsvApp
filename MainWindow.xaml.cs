@@ -272,6 +272,8 @@ namespace JsonToCsvApp
                 var name = prop.Name;
                 if (string.Equals(name, "caracteristiques", StringComparison.OrdinalIgnoreCase)) continue;
                 if (string.Equals(name, "documents", StringComparison.OrdinalIgnoreCase)) continue; // ignoré
+                if (string.Equals(name, "dispo", StringComparison.OrdinalIgnoreCase)) continue; // ignoré
+                if (string.Equals(name, "calibre", StringComparison.OrdinalIgnoreCase)) continue; // ignoré
 
                 var val = prop.Value;
                 switch (val.Type)
@@ -279,8 +281,13 @@ namespace JsonToCsvApp
                     case JTokenType.Array:
                         if (val is JArray arr)
                         {
-                            // Joindre les tableaux en chaîne lisible
-                            var joined = string.Join(" | ", arr.Select(x => x.Type == JTokenType.Null ? string.Empty : x.ToString(Formatting.None)));
+                            // Joindre les tableaux en chaîne lisible (sans guillemets superflus)
+                            var joined = string.Join(" | ", arr.Select(x =>
+                            {
+                                if (x.Type == JTokenType.Null) return string.Empty;
+                                if (x is JValue v && v.Type == JTokenType.String) return NormalizeStringValue(v.Value<string>());
+                                return x.ToString(Formatting.None);
+                            }));
                             dict[name] = joined;
                         }
                         break;
@@ -292,7 +299,17 @@ namespace JsonToCsvApp
                         dict[name] = string.Empty;
                         break;
                     default:
-                        dict[name] = val.ToString(Formatting.None);
+                        if (val is JValue sv && sv.Type == JTokenType.String)
+                        {
+                            var s = NormalizeStringValue(sv.Value<string>());
+                            if (string.Equals(name, "categorie", StringComparison.OrdinalIgnoreCase))
+                                s = NormalizeCategorie(s);
+                            dict[name] = s;
+                        }
+                        else
+                        {
+                            dict[name] = val.ToString(Formatting.None);
+                        }
                         break;
                 }
             }
@@ -307,10 +324,15 @@ namespace JsonToCsvApp
             {
                 var text = (string?)item["text"];
                 if (string.IsNullOrWhiteSpace(text)) continue;
+                if (IsMediaLabel(text)) continue; // ignorer "Médias"
                 allCaracColumns?.Add(text);
                 var valueToken = item["value"];
                 if (valueToken == null || valueToken.Type == JTokenType.Null) continue;
-                var value = valueToken.ToString(Formatting.None);
+                string value;
+                if (valueToken is JValue jv && jv.Type == JTokenType.String)
+                    value = NormalizeStringValue(jv.Value<string>());
+                else
+                    value = valueToken.ToString(Formatting.None);
                 if (string.IsNullOrWhiteSpace(value)) continue;
                 dict[text] = value;
                 nonEmptyCaracColumns?.Add(text);
@@ -332,9 +354,10 @@ namespace JsonToCsvApp
                 var ws = wb.Worksheets.Add(SanitizeWorksheetName(string.IsNullOrWhiteSpace(sheetName) ? "Feuille1" : sheetName));
 
                 // Header row
-                for (int c = 0; c < headers.Count; c++)
+                var headerCaptions = headers.Select(h => (h ?? string.Empty).ToUpperInvariant()).ToList();
+                for (int c = 0; c < headerCaptions.Count; c++)
                 {
-                    ws.Cell(1, c + 1).Value = headers[c];
+                    ws.Cell(1, c + 1).Value = headerCaptions[c];
                     ws.Cell(1, c + 1).Style.Font.Bold = true;
                 }
 
@@ -345,9 +368,19 @@ namespace JsonToCsvApp
                     for (int c = 0; c < headers.Count; c++)
                     {
                         row.TryGetValue(headers[c], out var val);
-                        ws.Cell(r + 2, c + 1).Value = val ?? string.Empty;
+                        ws.Cell(r + 2, c + 1).Value = NormalizeStringValue(val);
                     }
                 }
+
+                // Convertir en tableau structuré (table) couvrant toute la zone
+                var rng = ws.Range(1, 1, Math.Max(1, rows.Count) + 1, Math.Max(1, headers.Count));
+                var table = rng.CreateTable();
+                table.Theme = XLTableTheme.None; // pas de thème automatique
+                // Style de l'en-tête: fond rouge, texte blanc, gras, MAJUSCULES déjà appliquées
+                var headerRow = table.HeadersRow();
+                headerRow.Style.Fill.BackgroundColor = XLColor.Red;
+                headerRow.Style.Font.FontColor = XLColor.White;
+                headerRow.Style.Font.Bold = true;
 
                 ws.Columns().AdjustToContents();
 
@@ -359,6 +392,47 @@ namespace JsonToCsvApp
             }
 
             return Task.CompletedTask;
+        }
+
+        private static string NormalizeStringValue(string? s)
+        {
+            if (string.IsNullOrEmpty(s)) return string.Empty;
+            var t = s.Trim();
+            // retire une paire de guillemets superflus si elle entoure tout le texte
+            if (t.Length >= 2 && t.StartsWith("\"") && t.EndsWith("\""))
+            {
+                t = t.Substring(1, t.Length - 2);
+            }
+            return t;
+        }
+
+        private static string NormalizeCategorie(string? s)
+        {
+            var t = NormalizeStringValue(s);
+            if (string.IsNullOrWhiteSpace(t)) return t;
+            t = t.Trim();
+            if (t.Length == 1) return t.ToUpperInvariant();
+            return char.ToUpperInvariant(t[0]) + (t.Length > 1 ? t.Substring(1).ToLowerInvariant() : string.Empty);
+        }
+
+        private static bool IsMediaLabel(string? text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return false;
+            var norm = RemoveDiacritics(text).ToLowerInvariant();
+            return norm == "medias"; // match "Médias"
+        }
+
+        private static string RemoveDiacritics(string text)
+        {
+            var normalized = text.Normalize(NormalizationForm.FormD);
+            var sb = new StringBuilder();
+            foreach (var ch in normalized)
+            {
+                var uc = System.Globalization.CharUnicodeInfo.GetUnicodeCategory(ch);
+                if (uc != System.Globalization.UnicodeCategory.NonSpacingMark)
+                    sb.Append(ch);
+            }
+            return sb.ToString().Normalize(NormalizationForm.FormC);
         }
 
         private static string SanitizeWorksheetName(string name)
