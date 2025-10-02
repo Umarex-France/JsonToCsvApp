@@ -43,9 +43,13 @@
         "net8.0-windows7.0": {
           "targetAlias": "net8.0-windows",
           "dependencies": {
-            "CsvHelper": {
+            "ClosedXML": {
               "target": "Package",
-              "version": "[30.0.1, )"
+              "version": "[0.102.1, )"
+            },
+            "DocumentFormat.OpenXml": {
+              "target": "Package",
+              "version": "[2.20.0, )"
             },
             "Newtonsoft.Json": {
               "target": "Package",

@@ -1,4 +1,4 @@
-using CsvHelper;
+using ClosedXML.Excel;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
@@ -157,9 +157,9 @@ namespace JsonToCsvApp
                     var categoriesToken = root["categories"];
                     if (categoriesToken == null)
                     {
-                        AppendLog("Aucune clé 'categories' trouvée, génération d’un CSV unique.");
+                        AppendLog("Aucune clé 'categories' trouvée, génération d’un Excel unique.");
                         string defaultName = "categorie";
-                        await GenerateCsvForCategory(outDir, defaultName, root);
+                        await GenerateExcelForCategory(outDir, defaultName, root);
                     }
                     else if (categoriesToken is JArray arr)
                     {
@@ -168,16 +168,16 @@ namespace JsonToCsvApp
                         {
                             var cat = arr[i];
                             string catName = ResolveCategoryName(cat, i);
-                            await GenerateCsvForCategory(outDir, catName, cat);
+                            await GenerateExcelForCategory(outDir, catName, cat);
                             count++;
                         }
-                        AppendLog($"{count} fichiers CSV générés dans {outDir}");
+                        AppendLog($"{count} fichiers Excel générés dans {outDir}");
                     }
                     else
                     {
                         string catName = ResolveCategoryName(categoriesToken, 0);
-                        await GenerateCsvForCategory(outDir, catName, categoriesToken);
-                        AppendLog($"1 fichier CSV généré dans {outDir}");
+                        await GenerateExcelForCategory(outDir, catName, categoriesToken);
+                        AppendLog($"1 fichier Excel généré dans {outDir}");
                     }
                 }
             }
@@ -202,7 +202,7 @@ namespace JsonToCsvApp
                     Famille = (a["famille"]?.Type == JTokenType.Null ? null : (string?)a["famille"]) ?? "SansFamille"
                 });
 
-            int totalCsv = 0;
+            int totalExcel = 0;
             var allRowsGlobal = new List<Dictionary<string, string>>();
             var allCaracColsGlobal = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var nonEmptyCaracColsGlobal = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -249,18 +249,18 @@ namespace JsonToCsvApp
                     }
                 }
 
-                string fileName = ToCamelCase(famName) + ".csv";
-                string csvPath = Path.Combine(familleFolder, fileName);
-                await WriteCsv(csvPath, rows, allCaracColsGroup, nonEmptyCaracColsGroup);
-                AppendLog($"CSV généré: {csvPath}");
-                totalCsv++;
+                string fileName = ToCamelCase(famName) + ".xlsx";
+                string xlsxPath = Path.Combine(familleFolder, fileName);
+                await WriteExcel(xlsxPath, famName, rows, allCaracColsGroup, nonEmptyCaracColsGroup);
+                AppendLog($"Excel généré: {xlsxPath}");
+                totalExcel++;
             }
 
-            AppendLog($"{totalCsv} fichiers CSV générés dans {outDir}");
+            AppendLog($"{totalExcel} fichiers Excel générés dans {outDir}");
 
             // Génère l'index global nettoyé à la racine
-            string indexPath = Path.Combine(outDir, "index.csv");
-            await WriteCsv(indexPath, allRowsGlobal, allCaracColsGlobal, nonEmptyCaracColsGlobal);
+            string indexPath = Path.Combine(outDir, "index.xlsx");
+            await WriteExcel(indexPath, "index", allRowsGlobal, allCaracColsGlobal, nonEmptyCaracColsGlobal);
             AppendLog($"Index global généré: {indexPath}");
         }
 
@@ -317,11 +317,8 @@ namespace JsonToCsvApp
             }
         }
 
-        private static async Task WriteCsv(string path, List<Dictionary<string, string>> rows, ISet<string>? allCaracColumns = null, ISet<string>? nonEmptyCaracColumns = null)
+        private static Task WriteExcel(string path, string sheetName, List<Dictionary<string, string>> rows, ISet<string>? allCaracColumns = null, ISet<string>? nonEmptyCaracColumns = null)
         {
-            await using var writer = new StreamWriter(path, false, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
-            using var csv = new CsvWriter(writer, CultureInfo.InvariantCulture);
-
             var headers = rows.SelectMany(d => d.Keys).Distinct().ToList();
             if (allCaracColumns != null && nonEmptyCaracColumns != null)
             {
@@ -329,18 +326,51 @@ namespace JsonToCsvApp
                     .Where(h => !allCaracColumns.Contains(h) || nonEmptyCaracColumns.Contains(h))
                     .ToList();
             }
-            foreach (var h in headers) csv.WriteField(h);
-            await csv.NextRecordAsync();
 
-            foreach (var row in rows)
+            using (var wb = new XLWorkbook())
             {
-                foreach (var h in headers)
+                var ws = wb.Worksheets.Add(SanitizeWorksheetName(string.IsNullOrWhiteSpace(sheetName) ? "Feuille1" : sheetName));
+
+                // Header row
+                for (int c = 0; c < headers.Count; c++)
                 {
-                    row.TryGetValue(h, out var val);
-                    csv.WriteField(val ?? string.Empty);
+                    ws.Cell(1, c + 1).Value = headers[c];
+                    ws.Cell(1, c + 1).Style.Font.Bold = true;
                 }
-                await csv.NextRecordAsync();
+
+                // Data rows start at row 2
+                for (int r = 0; r < rows.Count; r++)
+                {
+                    var row = rows[r];
+                    for (int c = 0; c < headers.Count; c++)
+                    {
+                        row.TryGetValue(headers[c], out var val);
+                        ws.Cell(r + 2, c + 1).Value = val ?? string.Empty;
+                    }
+                }
+
+                ws.Columns().AdjustToContents();
+
+                using (var fs = new FileStream(path, FileMode.Create, FileAccess.ReadWrite, FileShare.None))
+                {
+                    wb.SaveAs(fs);
+                    fs.Flush(true);
+                }
             }
+
+            return Task.CompletedTask;
+        }
+
+        private static string SanitizeWorksheetName(string name)
+        {
+            var invalid = new[] { ':', '\\', '/', '?', '*', '[', ']' };
+            foreach (var ch in invalid)
+            {
+                name = name.Replace(ch, '_');
+            }
+            if (name.Length > 31) name = name.Substring(0, 31);
+            if (string.IsNullOrWhiteSpace(name)) name = "Feuille1";
+            return name;
         }
 
         private static string ToCamelCase(string input)
@@ -520,31 +550,35 @@ namespace JsonToCsvApp
             return name.Trim();
         }
 
-        private async Task GenerateCsvForCategory(string outputDir, string categoryName, JToken data)
+        private Task GenerateExcelForCategory(string outputDir, string categoryName, JToken data)
         {
-            string categoryFolder = Path.Combine(outputDir, categoryName);
+            string categoryFolder = Path.Combine(outputDir, SanitizeName(categoryName));
             Directory.CreateDirectory(categoryFolder);
-            string csvPath = Path.Combine(categoryFolder, $"{categoryName}.csv");
+            string xlsxPath = Path.Combine(categoryFolder, $"{SanitizeName(categoryName)}.xlsx");
 
-            var rows = BuildRows(data);
-            AppendLog($"Génération CSV: {csvPath}");
-
-            await using var writer = new StreamWriter(csvPath, false, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
-            using var csv = new CsvWriter(writer, CultureInfo.InvariantCulture);
-
-            var headers = rows.SelectMany(d => d.Keys).Distinct().ToList();
-            foreach (var h in headers) csv.WriteField(h);
-            await csv.NextRecordAsync();
-
-            foreach (var row in rows)
+            List<Dictionary<string, string>> rows;
+            if (data is JObject obj && obj["items"] is JArray items && items.All(x => x is JObject))
             {
-                foreach (var h in headers)
+                rows = new List<Dictionary<string, string>>();
+                foreach (var it in items.Cast<JObject>())
                 {
-                    row.TryGetValue(h, out var val);
-                    csv.WriteField(val ?? string.Empty);
+                    var dict = new Dictionary<string, string>();
+                    foreach (var p in it.Properties())
+                    {
+                        var v = p.Value;
+                        dict[p.Name] = v.Type == JTokenType.Null ? string.Empty : v.ToString(Formatting.None);
+                    }
+                    rows.Add(dict);
                 }
-                await csv.NextRecordAsync();
             }
+            else
+            {
+                // fallback sur aplat
+                rows = BuildRows(data);
+            }
+
+            AppendLog($"Génération Excel: {xlsxPath}");
+            return WriteExcel(xlsxPath, categoryName, rows);
         }
 
         private static List<Dictionary<string, string>> BuildRows(JToken token)
