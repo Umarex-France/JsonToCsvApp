@@ -1,0 +1,98 @@
+<Window x:Class="JsonToCsvApp.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Générateur JSON -> CSV" Height="600" Width="900" MinWidth="800" MinHeight="500">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="16"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="16"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="16"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="16"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- En-tête -->
+        <TextBlock Grid.Row="0" Text="Générateur JSON -> CSV" FontSize="20" FontWeight="Bold" 
+                   HorizontalAlignment="Center"/>
+
+        <!-- Frame: Récupération des données (Endpoint + API Key + Sauvegarder) -->
+        <GroupBox Grid.Row="2" Header="Récupération des données" HorizontalAlignment="Stretch">
+            <Grid Margin="12,10,12,12">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="8"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="12"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="12"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Endpoint (URL) :" VerticalAlignment="Center"/>
+                <TextBox x:Name="EndpointTextBox" Grid.Row="0" Grid.Column="2" Height="28"
+                         Text="https://api.exemple.com/data.json"/>
+
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="API Key        :" VerticalAlignment="Center"/>
+                <Grid Grid.Row="2" Grid.Column="2">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <PasswordBox x:Name="ApiKeyBox" Height="28" Grid.Column="0" PasswordChanged="ApiKeyBox_PasswordChanged"/>
+                    <TextBox x:Name="ApiKeyPlainTextBox" Height="28" Grid.Column="0" Visibility="Collapsed" TextChanged="ApiKeyPlainTextBox_TextChanged"/>
+                    <ToggleButton x:Name="ApiRevealToggle" Grid.Column="1" Width="36" Height="28" Margin="6,0,0,0" Click="ApiRevealToggle_Click">👁</ToggleButton>
+                </Grid>
+
+                <Button x:Name="SaveApiButton" Grid.Row="4" Grid.Column="0" Content="Sauvegarder" Width="120" Height="30"
+                        Click="SaveApiButton_Click"/>
+            </Grid>
+        </GroupBox>
+
+        <!-- Frame: Choix du dossier (Parcourir + Supprimer anciens) -->
+        <GroupBox Grid.Row="4" Header="Choix du dossier" HorizontalAlignment="Stretch">
+            <Grid Margin="12,10,12,12">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="8"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="12"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Dossier de sortie :" VerticalAlignment="Center"/>
+                <DockPanel Grid.Row="0" Grid.Column="2">
+                    <TextBox x:Name="OutputFolderTextBox" Height="28" DockPanel.Dock="Left"/>
+                </DockPanel>
+
+                <DockPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3">
+                    <Button x:Name="BrowseFolderButton" Content="Parcourir" Width="120" Height="30"
+                            Click="BrowseFolderButton_Click"/>
+                    <DockPanel DockPanel.Dock="Right" LastChildFill="True">
+                        <CheckBox x:Name="DeleteOldCheckBox" Content="Supprimer anciens" HorizontalAlignment="Right"
+                                  VerticalAlignment="Center" Click="DeleteOldCheckBox_Click"/>
+                    </DockPanel>
+                </DockPanel>
+            </Grid>
+        </GroupBox>
+
+        <!-- Bouton GÉNÉRER -->
+        <Button x:Name="GenerateButton" Grid.Row="6" Content="GÉNÉRER" Height="44" Width="180"
+                FontSize="16" FontWeight="Bold" HorizontalAlignment="Center" Click="GenerateButton_Click"/>
+
+        <!-- Logs -->
+        <TextBlock Grid.Row="8" Text="étapes en cours" FontWeight="SemiBold"/>
+        <TextBox x:Name="LogsTextBox" Grid.Row="9" Margin="0,4,0,0" IsReadOnly="True" AcceptsReturn="True"
+                 VerticalScrollBarVisibility="Auto" TextWrapping="NoWrap"/>
+    </Grid>
+</Window>
