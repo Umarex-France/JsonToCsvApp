@@ -1,4 +1,4 @@
-<Window x:Class="JsonToCsvApp.MainWindow"
+<Window x:Class="JsonToExcel.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="JSON2EXCEL"

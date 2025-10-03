@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyTitle>JsonToExcel</AssemblyTitle>
+    <RootNamespace>JsonToExcel</RootNamespace>
+    <AssemblyName>JsonToExcel</AssemblyName>
+    <ApplicationIcon>Resources\Json2Excel.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="ClosedXML" Version="0.102.1" />
+    <PackageReference Include="DocumentFormat.OpenXml" Version="2.20.0" />
+  </ItemGroup>
+  <!-- Application icon -->
+  <ItemGroup>
+    <Content Include="Resources\Json2Excel.ico" />
+  </ItemGroup>
+  <!-- WPF resources -->
+  <ItemGroup>
+    <Resource Include="Resources\umarexLogo.png" />
+    <!-- <Resource Include="Resources\**\*.png" /> -->
+  </ItemGroup>
+</Project>

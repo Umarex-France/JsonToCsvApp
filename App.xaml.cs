@@ -1,6 +1,6 @@
 using System.Windows;
 
-namespace JsonToCsvApp
+namespace JsonToExcel
 {
     public partial class App : System.Windows.Application
     {

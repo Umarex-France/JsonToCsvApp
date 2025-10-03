@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "ulwUDekURKw=",
+  "dgSpecHash": "ofDkXDnpTPw=",
   "success": true,
-  "projectFilePath": "C:\\__DEV__\\JsonToCsvApp\\JsonToCsvApp.csproj",
+  "projectFilePath": "C:\\__DEV__\\JsonToExcel\\JsonToExcel.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\rouss\\.nuget\\packages\\closedxml\\0.102.1\\closedxml.0.102.1.nupkg.sha512",
     "C:\\Users\\rouss\\.nuget\\packages\\documentformat.openxml\\2.20.0\\documentformat.openxml.2.20.0.nupkg.sha512",

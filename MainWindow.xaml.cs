@@ -13,7 +13,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using Forms = System.Windows.Forms;
 
-namespace JsonToCsvApp
+namespace JsonToExcel
 {
     public partial class MainWindow : Window
     {

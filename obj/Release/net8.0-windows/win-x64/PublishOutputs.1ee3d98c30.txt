@@ -1,2 +1,0 @@
-C:\__DEV__\JsonToCsvApp\bin\Release\net8.0-windows\win-x64\publish\Json2Excel.pdb
-C:\__DEV__\JsonToCsvApp\bin\Release\net8.0-windows\win-x64\publish\Json2Excel.exe

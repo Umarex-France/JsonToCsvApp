@@ -7351,11 +7351,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\__DEV__\\JsonToCsvApp\\JsonToCsvApp.csproj",
-      "projectName": "Json2Excel",
-      "projectPath": "C:\\__DEV__\\JsonToCsvApp\\JsonToCsvApp.csproj",
+      "projectUniqueName": "C:\\__DEV__\\JsonToExcel\\JsonToExcel.csproj",
+      "projectName": "JsonToExcel",
+      "projectPath": "C:\\__DEV__\\JsonToExcel\\JsonToExcel.csproj",
       "packagesPath": "C:\\Users\\rouss\\.nuget\\packages\\",
-      "outputPath": "C:\\__DEV__\\JsonToCsvApp\\obj\\",
+      "outputPath": "C:\\__DEV__\\JsonToExcel\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\rouss\\AppData\\Roaming\\NuGet\\NuGet.Config"
