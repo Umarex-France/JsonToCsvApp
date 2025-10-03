@@ -6,11 +6,28 @@
     <UseWindowsForms>true</UseWindowsForms>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+
+    <AssemblyTitle>Json2Excel</AssemblyTitle>
+    <RootNamespace>Json2Excel</RootNamespace>
+    <AssemblyName>Json2Excel</AssemblyName>
+    <ApplicationIcon>Resources\Json2Excel.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="ClosedXML" Version="0.102.1" />
     <PackageReference Include="DocumentFormat.OpenXml" Version="2.20.0" />
+  </ItemGroup>
+
+  <!-- Icône de l’application -->
+  <ItemGroup>
+    <Content Include="Resources\Json2Excel.ico" />
+  </ItemGroup>
+
+  <!-- Ressources WPF (images, etc.) -->
+  <ItemGroup>
+    <Resource Include="Resources\umarexLogo.png" />
+    <!-- si tu veux embarquer toutes les images -->
+    <!-- <Resource Include="Resources\**\*.png" /> -->
   </ItemGroup>
 </Project>

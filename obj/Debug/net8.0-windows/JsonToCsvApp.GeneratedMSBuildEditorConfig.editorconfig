@@ -1,4 +1,8 @@
 is_global = true
+build_property.EnableAotAnalyzer = 
+build_property.EnableSingleFileAnalyzer = 
+build_property.EnableTrimAnalyzer = 
+build_property.IncludeAllContentForSelfExtract = 
 build_property.ApplicationManifest = 
 build_property.StartupObject = 
 build_property.ApplicationDefaultFont = 
@@ -13,7 +17,7 @@ build_property.InvariantGlobalization =
 build_property.PlatformNeutralAssembly = 
 build_property.EnforceExtendedAnalyzerRules = 
 build_property._SupportedPlatformList = Linux,macOS,Windows
-build_property.RootNamespace = JsonToCsvApp
+build_property.RootNamespace = Json2Excel
 build_property.ProjectDir = C:\__DEV__\JsonToCsvApp\
 build_property.EnableComHosting = 
 build_property.EnableGeneratedComInterfaceComImportInterop = 

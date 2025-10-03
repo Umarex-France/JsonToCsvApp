@@ -26,7 +26,8 @@ namespace JsonToCsvApp
             InitializeComponent();
             _configPath = System.IO.Path.Combine(AppContext.BaseDirectory, "config.json");
             this.Loaded += Window_Loaded;
-            _apiVisible = false;
+            // Afficher la clé API en texte normal par défaut (pas en mode mot de passe)
+            _apiVisible = true;
             ApplyApiVisibility();
         }
 
@@ -274,6 +275,7 @@ namespace JsonToCsvApp
                 if (string.Equals(name, "documents", StringComparison.OrdinalIgnoreCase)) continue; // ignoré
                 if (string.Equals(name, "dispo", StringComparison.OrdinalIgnoreCase)) continue; // ignoré
                 if (string.Equals(name, "calibre", StringComparison.OrdinalIgnoreCase)) continue; // ignoré
+                if (string.Equals(name, "puissance", StringComparison.OrdinalIgnoreCase)) continue; // ignoré
 
                 var val = prop.Value;
                 switch (val.Type)
@@ -281,8 +283,8 @@ namespace JsonToCsvApp
                     case JTokenType.Array:
                         if (val is JArray arr)
                         {
-                            // Joindre les tableaux en chaîne lisible (sans guillemets superflus)
-                            var joined = string.Join(" | ", arr.Select(x =>
+                            // Joindre les tableaux en chaîne lisible avec virgule (sans guillemets superflus)
+                            var joined = string.Join(", ", arr.Select(x =>
                             {
                                 if (x.Type == JTokenType.Null) return string.Empty;
                                 if (x is JValue v && v.Type == JTokenType.String) return NormalizeStringValue(v.Value<string>());
@@ -349,12 +351,15 @@ namespace JsonToCsvApp
                     .ToList();
             }
 
+            var orderedHeaders = OrderHeaders(headers);
+            var sortedRows = SortRowsForOutput(rows);
+
             using (var wb = new XLWorkbook())
             {
                 var ws = wb.Worksheets.Add(SanitizeWorksheetName(string.IsNullOrWhiteSpace(sheetName) ? "Feuille1" : sheetName));
 
                 // Header row
-                var headerCaptions = headers.Select(h => (h ?? string.Empty).ToUpperInvariant()).ToList();
+                var headerCaptions = orderedHeaders.Select(h => (h ?? string.Empty).ToUpperInvariant()).ToList();
                 for (int c = 0; c < headerCaptions.Count; c++)
                 {
                     ws.Cell(1, c + 1).Value = headerCaptions[c];
@@ -362,18 +367,35 @@ namespace JsonToCsvApp
                 }
 
                 // Data rows start at row 2
-                for (int r = 0; r < rows.Count; r++)
+                for (int r = 0; r < sortedRows.Count; r++)
                 {
-                    var row = rows[r];
-                    for (int c = 0; c < headers.Count; c++)
+                    var row = sortedRows[r];
+                    for (int c = 0; c < orderedHeaders.Count; c++)
                     {
-                        row.TryGetValue(headers[c], out var val);
-                        ws.Cell(r + 2, c + 1).Value = NormalizeStringValue(val);
+                        var key = orderedHeaders[c];
+                        row.TryGetValue(key, out var val);
+                        var headerNorm = NormalizeHeaderName(key);
+                        if (headerNorm == "PUHT" || headerNorm == "PPC")
+                        {
+                            if (TryParseDecimalFlexible(val, out var dec))
+                            {
+                                ws.Cell(r + 2, c + 1).Value = dec;
+                                ws.Cell(r + 2, c + 1).Style.NumberFormat.Format = "€ #,##0.00";
+                            }
+                            else
+                            {
+                                ws.Cell(r + 2, c + 1).Value = NormalizeStringValue(val);
+                            }
+                        }
+                        else
+                        {
+                            ws.Cell(r + 2, c + 1).Value = NormalizeStringValue(val);
+                        }
                     }
                 }
 
                 // Convertir en tableau structuré (table) couvrant toute la zone
-                var rng = ws.Range(1, 1, Math.Max(1, rows.Count) + 1, Math.Max(1, headers.Count));
+                var rng = ws.Range(1, 1, Math.Max(1, sortedRows.Count) + 1, Math.Max(1, orderedHeaders.Count));
                 var table = rng.CreateTable();
                 table.Theme = XLTableTheme.None; // pas de thème automatique
                 // Style de l'en-tête: fond rouge, texte blanc, gras, MAJUSCULES déjà appliquées
@@ -392,6 +414,87 @@ namespace JsonToCsvApp
             }
 
             return Task.CompletedTask;
+        }
+
+        private static List<Dictionary<string, string>> SortRowsForOutput(IEnumerable<Dictionary<string, string>> rows)
+        {
+            string Norm(string? s) => NormalizeSortValue(s);
+            return rows
+                .OrderBy(r => Norm(GetValueCI(r, "division")))
+                .ThenBy(r => Norm(GetValueCI(r, "famille")))
+                .ThenBy(r => Norm(GetValueCI(r, "marque")))
+                .ThenBy(r => Norm(GetValueCI(r, "nom")))
+                .ToList();
+        }
+
+        private static string GetValueCI(Dictionary<string, string> row, string key)
+        {
+            foreach (var kvp in row)
+            {
+                if (string.Equals(kvp.Key, key, StringComparison.OrdinalIgnoreCase))
+                    return kvp.Value ?? string.Empty;
+            }
+            return string.Empty;
+        }
+
+        private static string NormalizeSortValue(string? s)
+        {
+            var t = NormalizeStringValue(s);
+            t = RemoveDiacritics(t);
+            return t.ToUpperInvariant();
+        }
+
+        private static List<string> OrderHeaders(List<string> headers)
+        {
+            var preferred = new List<string>
+            {
+                "UNIVERS","DIVISION","FAMILLE","MARQUE","REFERENCE_FOURNISSEUR",
+                "STATUS","STATUT","NOM","DESIGNATION","REFERENCE","CATEGORIE",
+                "PUHT","PPC","DESCRIPTIF","RGA"
+            };
+            var used = new HashSet<string>();
+            var result = new List<string>();
+
+            // Helper to find and add header by normalized name
+            foreach (var want in preferred)
+            {
+                var idx = headers.FindIndex(h => NormalizeHeaderName(h) == want);
+                if (idx >= 0)
+                {
+                    var key = headers[idx];
+                    if (used.Add(key)) result.Add(key);
+                }
+            }
+            // Keep remaining headers in current order
+            foreach (var h in headers)
+            {
+                if (used.Add(h)) result.Add(h);
+            }
+            return result;
+        }
+
+        private static string NormalizeHeaderName(string? name)
+        {
+            name ??= string.Empty;
+            return RemoveDiacritics(name).ToUpperInvariant();
+        }
+
+        private static bool TryParseDecimalFlexible(string? input, out decimal value)
+        {
+            value = 0m;
+            if (string.IsNullOrWhiteSpace(input)) return false;
+            var s = input.Trim();
+            // remove surrounding quotes if any
+            if (s.Length >= 2 && s[0] == '"' && s[^1] == '"') s = s.Substring(1, s.Length - 2);
+            s = s.Replace(" \u00A0", " ");
+            // Try invariant with dot
+            if (decimal.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out value)) return true;
+            // Replace comma by dot and try again
+            var s2 = s.Replace(',', '.');
+            if (decimal.TryParse(s2, NumberStyles.Any, CultureInfo.InvariantCulture, out value)) return true;
+            // Try fr-FR
+            if (decimal.TryParse(s, NumberStyles.Any, new CultureInfo("fr-FR"), out value)) return true;
+            return false;
         }
 
         private static string NormalizeStringValue(string? s)
